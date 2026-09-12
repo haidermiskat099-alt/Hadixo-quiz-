@@ -1,4 +1,0 @@
-telegram
-google-genai
-httpx
-
