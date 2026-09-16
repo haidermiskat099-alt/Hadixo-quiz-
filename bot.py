@@ -1,6 +1,8 @@
 import asyncio
 import json
 import logging
+import threading
+from flask import Flask
 from google import genai
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
@@ -15,6 +17,19 @@ from telegram.ext import (
 
 # Logging Setup
 logging.basicConfig(level=logging.INFO)
+
+# --- FLASK KEEP-ALIVE SERVER FOR RENDER ---
+app_flask = Flask(__name__)
+
+@app_flask.route('/')
+def home():
+    return "Quiz Bot is running 24/7!"
+
+def run_flask():
+    # Render assigns a dynamic port via environment variables, default to 10000
+    import os
+    port = int(os.environ.get("PORT", 10000))
+    app_flask.run(host="0.0.0.0", port=port)
 
 # --- CONFIGURATION ---
 BOT_TOKEN = "8898110641:AAHaQNX8zIkasx3hWdL8s2lKYexpA83Fgno"
@@ -330,6 +345,11 @@ async def show_leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(board_msg, parse_mode="Markdown")
 
 def main():
+    # Start Flask in a separate background thread so it satisfies Render's web service requirement
+    flask_thread = threading.Thread(target=run_flask)
+    flask_thread.daemon = True
+    flask_thread.start()
+
     app = (
         Application.builder()
         .token(BOT_TOKEN)
@@ -347,8 +367,9 @@ def main():
     app.add_handler(CallbackQueryHandler(handle_callback))
     app.add_handler(PollAnswerHandler(handle_poll_answer))
 
-    print("Lightweight text-input Quiz Bot running successfully...")
+    print("Lightweight text-input Quiz Bot running successfully with Flask server...")
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
     main()
+    
