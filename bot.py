@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO)
 
 # --- CONFIGURATION ---
 BOT_TOKEN = "8898110641:AAHaQNX8zIkasx3hWdL8s2lKYexpA83Fgno"
-GEMINI_API_KEY = "AIzaSyAbx6E8TC5GeUDZqletejoUhy_qDgLWkaA"
+GEMINI_API_KEY = "AQ.Ab8RN6J0yaDe22eXqya9gDO7yLMpoSYkcD7oaEQ-BrkFybNUOA"
 
 ai_client = genai.Client(api_key=GEMINI_API_KEY)
 
@@ -153,12 +153,31 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         keyboard = [
             [
+                InlineKeyboardButton("5 Seconds", callback_data="delay_5"),
+                InlineKeyboardButton("10 Seconds", callback_data="delay_10")
+            ],
+            [
+                InlineKeyboardButton("15 Seconds", callback_data="delay_15"),
+                InlineKeyboardButton("20 Seconds", callback_data="delay_20")
+            ]
+        ]
+        await query.edit_message_text(
+            f"Count: **{cnt} Questions**\n\n**Step 6:** Select time delay before the next question appears:",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+
+    elif data.startswith("delay_"):
+        delay = int(data.split("_")[1])
+        quiz_setup_data[user_id]["question_delay"] = delay
+
+        keyboard = [
+            [
                 InlineKeyboardButton("Yes ⏱️ (Lock Poll)", callback_data="timer_yes"),
                 InlineKeyboardButton("No ♾️ (No Timer Lock)", callback_data="timer_no")
             ]
         ]
         await query.edit_message_text(
-            f"Count: **{cnt} Questions**\n\n**Step 6:** Enable strict timer lock per question?",
+            f"Question Delay: **{delay} Seconds**\n\n**Step 7:** Enable strict timer lock per question?",
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
@@ -176,7 +195,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ]
             ]
             await query.edit_message_text(
-                "⏳ **Select Timer Duration Per Question:**",
+                "⏳ **Select Poll Timer Duration Per Question:**",
                 reply_markup=InlineKeyboardMarkup(keyboard)
             )
 
@@ -212,6 +231,7 @@ async def build_and_launch(query, context, user_id, chat_id):
         "current_index": 0,
         "total_q": len(questions),
         "open_period": config.get("open_period"),
+        "question_delay": config.get("question_delay", 10),
         "questions": questions,
         "scores": {}
     }
@@ -253,8 +273,8 @@ async def send_next_poll(context: ContextTypes.DEFAULT_TYPE, chat_id: int):
     except Exception as e:
         logging.error(f"Poll error: {e}")
 
-    wait_time = session["open_period"] if session["open_period"] else 12
-    await asyncio.sleep(wait_time + 2)
+    wait_time = session["question_delay"]
+    await asyncio.sleep(wait_time)
     session["current_index"] += 1
     await send_next_poll(context, chat_id)
 
@@ -332,4 +352,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-          
